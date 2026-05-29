@@ -1,0 +1,46 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Your_strong_password123"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mediwholesale_sql:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Your_strong_password123" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/MediWholesale.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=MediWholesale;User Id=sa;Password=Your_strong_password123;TrustServerCertificate=True;"
+      Jwt__Key: "MediWholesale-Super-Secret-Key-Change-In-Production-32chars!"
+      Jwt__Issuer: MediWholesale
+      Jwt__Audience: MediWholesaleClients
+      Cors__Origins__0: "http://localhost"
+      Cors__Origins__1: "http://localhost:4200"
+    ports:
+      - "5152:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  web:
+    build:
+      context: frontend/medi-wholesale-web
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  mediwholesale_sql:

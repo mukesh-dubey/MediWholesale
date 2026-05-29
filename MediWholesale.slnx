@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/MediWholesale.Api/MediWholesale.Api.csproj" />
+    <Project Path="backend/MediWholesale.Domain/MediWholesale.Domain.csproj" />
+    <Project Path="backend/MediWholesale.Infrastructure/MediWholesale.Infrastructure.csproj" />
+  </Folder>
+</Solution>
