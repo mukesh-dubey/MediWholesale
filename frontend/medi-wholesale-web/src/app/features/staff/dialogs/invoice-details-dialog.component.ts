@@ -1,12 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CurrencyPipe, DatePipe, TitleCasePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatChipsModule } from '@angular/material/chips';
 import { Invoice } from '../../../core/models/business.model';
 
 @Component({
@@ -19,9 +20,9 @@ import { Invoice } from '../../../core/models/business.model';
     MatButtonModule,
     MatIconModule,
     MatDividerModule,
+    MatChipsModule,
     CurrencyPipe,
     DatePipe,
-    TitleCasePipe,
   ],
   template: `
     <h2 mat-dialog-title>Invoice Details</h2>

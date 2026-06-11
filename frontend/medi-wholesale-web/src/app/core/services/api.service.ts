@@ -8,6 +8,10 @@ import {
   Dashboard,
   Invoice,
   Order,
+  Payment,
+  PaymentMethod,
+  PaymentProcessing,
+  PaymentResult,
   Product,
 } from '../models/business.model';
 
@@ -131,6 +135,26 @@ export class ApiService {
 
   getInvoice(id: number) {
     return this.http.get<Invoice>(`${this.base}/invoices/${id}`);
+  }
+
+  // Payments
+  getPaymentMethods() {
+    return this.http.get<PaymentMethod[]>(`${this.base}/payments/methods`);
+  }
+
+  initiatePayment(orderId: number, paymentMethod: string) {
+    return this.http.post<PaymentProcessing>(`${this.base}/payments/initiate`, {
+      orderId,
+      paymentMethod,
+    });
+  }
+
+  confirmPayment(payment: PaymentProcessing) {
+    return this.http.post<PaymentResult>(`${this.base}/payments/confirm`, payment);
+  }
+
+  getOrderPayments(orderId: number) {
+    return this.http.get<Payment[]>(`${this.base}/payments/order/${orderId}`);
   }
 }
 

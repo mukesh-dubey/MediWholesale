@@ -132,3 +132,40 @@ export interface Dashboard {
   pendingOrders: number;
   outstandingAmount: number;
 }
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface PaymentProcessing {
+  id: number;
+  transactionId: string;
+  status: string;
+  paymentMethod: string;
+  amount: number;
+  startedAt: string;
+}
+
+export interface PaymentResult {
+  transactionId: string;
+  status: string;
+  paymentMethod: string;
+  amount: number;
+  processedAt: string;
+  errorMessage?: string;
+}
+
+export interface Payment {
+  id: number;
+  invoiceId: number;
+  salesOrderId?: number;
+  paymentDate: string;
+  amount: number;
+  mode: string;
+  transactionId?: string;
+  referenceNumber?: string;
+  status: string;
+  notes?: string;
+}
