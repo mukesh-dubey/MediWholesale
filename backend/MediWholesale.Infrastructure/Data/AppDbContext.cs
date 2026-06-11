@@ -65,6 +65,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.HasIndex(x => x.InvoiceNumber).IsUnique();
             e.Property(x => x.SubTotal).HasPrecision(18, 2);
+            e.Property(x => x.DiscountAmount).HasPrecision(18, 2);
             e.Property(x => x.CgstAmount).HasPrecision(18, 2);
             e.Property(x => x.SgstAmount).HasPrecision(18, 2);
             e.Property(x => x.IgstAmount).HasPrecision(18, 2);
@@ -77,6 +78,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.UnitPrice).HasPrecision(18, 2);
             e.Property(x => x.GstRatePercent).HasPrecision(5, 2);
             e.Property(x => x.TaxableAmount).HasPrecision(18, 2);
+            e.Property(x => x.DiscountAmount).HasPrecision(18, 2);
             e.Property(x => x.CgstAmount).HasPrecision(18, 2);
             e.Property(x => x.SgstAmount).HasPrecision(18, 2);
             e.Property(x => x.IgstAmount).HasPrecision(18, 2);

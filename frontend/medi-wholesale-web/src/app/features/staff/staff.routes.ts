@@ -7,6 +7,7 @@ const staffNav: NavItem[] = [
   { label: 'Products', route: '/staff/products', icon: 'medication' },
   { label: 'Inventory', route: '/staff/inventory', icon: 'inventory_2' },
   { label: 'Orders', route: '/staff/orders', icon: 'shopping_cart' },
+  { label: 'Invoices', route: '/staff/invoices', icon: 'receipt' },
 ];
 
 export const staffRoutes: Routes = [
@@ -39,6 +40,11 @@ export const staffRoutes: Routes = [
         path: 'orders',
         loadComponent: () =>
           import('./pages/staff-orders.component').then((m) => m.StaffOrdersComponent),
+      },
+      {
+        path: 'invoices',
+        loadComponent: () =>
+          import('./pages/staff-invoices.component').then((m) => m.StaffInvoicesComponent),
       },
     ],
   },

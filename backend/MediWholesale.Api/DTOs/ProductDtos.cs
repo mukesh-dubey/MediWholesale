@@ -13,7 +13,8 @@ public record ProductDto(
     bool IsPrescriptionRequired,
     int ReorderLevel,
     bool IsActive,
-    int TotalStock);
+    int TotalStock,
+    decimal SaleRate);
 
 public record BatchStockDto(
     int Id,

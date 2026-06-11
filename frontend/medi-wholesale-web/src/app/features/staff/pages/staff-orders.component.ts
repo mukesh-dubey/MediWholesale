@@ -57,9 +57,17 @@ import {
         <th mat-header-cell *matHeaderCellDef>Actions</th>
         <td mat-cell *matCellDef="let o">
           @if (o.status === 'Pending') {
-            <button mat-button color="primary" (click)="confirm(o)">Confirm</button>
+            <button mat-button color="primary" (click)="dispatch(o)">Dispatch</button>
           }
-          @if (o.status !== 'Completed' && o.status !== 'Cancelled' && o.status !== 'PartiallyDispatched') {
+          @if (o.status === 'Confirmed') {
+            <button mat-button color="primary" (click)="dispatch(o)">Dispatch</button>
+          }
+          @if (
+            o.status !== 'Completed' &&
+            o.status !== 'Cancelled' &&
+            o.status !== 'PartiallyDispatched' &&
+            o.status !== 'Dispatched'
+          ) {
             <button mat-button color="warn" (click)="cancel(o)">Cancel</button>
           }
         </td>
@@ -86,13 +94,14 @@ export class StaffOrdersComponent implements OnInit {
     this.api.getOrders().subscribe((o) => this.orders.set(o));
   }
 
-  confirm(order: Order): void {
-    this.api.updateOrderStatus(order.id, 'Confirmed').subscribe({
+  dispatch(order: Order): void {
+    this.api.updateOrderStatus(order.id, 'Dispatched').subscribe({
       next: () => {
-        this.snack.open('Order confirmed', 'OK', { duration: 3000 });
+        this.snack.open('Order dispatched and invoice generated', 'OK', { duration: 3000 });
         this.load();
       },
-      error: () => this.snack.open('Failed to confirm order', 'OK', { duration: 3000 }),
+      error: (e) =>
+        this.snack.open(e.error?.message ?? 'Failed to dispatch order', 'OK', { duration: 4000 }),
     });
   }
 

@@ -6,6 +6,7 @@ import {
   Customer,
   CustomerType,
   Dashboard,
+  Invoice,
   Order,
   Product,
 } from '../models/business.model';
@@ -13,8 +14,8 @@ import {
 export type CreateCustomerPayload = Omit<Customer, 'id' | 'isActive' | 'hasPortalAccess'>;
 export type UpdateCustomerPayload = Omit<Customer, 'id' | 'hasPortalAccess'>;
 
-export type CreateProductPayload = Omit<Product, 'id' | 'isActive' | 'totalStock'>;
-export type UpdateProductPayload = Omit<Product, 'id' | 'totalStock'>;
+export type CreateProductPayload = Omit<Product, 'id' | 'isActive' | 'totalStock' | 'saleRate'>;
+export type UpdateProductPayload = Omit<Product, 'id' | 'totalStock' | 'saleRate'>;
 
 export type CreateBatchPayload = {
   productId: number;
@@ -121,6 +122,15 @@ export class ApiService {
 
   cancelOrder(id: number) {
     return this.http.delete<void>(`${this.base}/orders/${id}`);
+  }
+
+  // Invoices
+  getInvoices() {
+    return this.http.get<Invoice[]>(`${this.base}/invoices`);
+  }
+
+  getInvoice(id: number) {
+    return this.http.get<Invoice>(`${this.base}/invoices/${id}`);
   }
 }
 

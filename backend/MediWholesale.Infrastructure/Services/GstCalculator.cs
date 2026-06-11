@@ -15,9 +15,10 @@ public static class GstCalculator
         decimal unitPrice,
         int quantity,
         decimal gstRatePercent,
-        GstSupplyType supplyType)
+        GstSupplyType supplyType,
+        decimal discountAmount = 0)
     {
-        var taxable = Math.Round(unitPrice * quantity, 2);
+        var taxable = Math.Max(0, Math.Round(unitPrice * quantity - discountAmount, 2));
         var tax = Math.Round(taxable * gstRatePercent / 100m, 2);
 
         if (supplyType == GstSupplyType.InterState)

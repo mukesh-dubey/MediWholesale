@@ -6,5 +6,6 @@ public enum OrderStatus
     Confirmed = 2,
     PartiallyDispatched = 3,
     Completed = 4,
-    Cancelled = 5
+    Cancelled = 5,
+    Dispatched = 6
 }

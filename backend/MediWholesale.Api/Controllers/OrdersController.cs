@@ -3,6 +3,7 @@ using MediWholesale.Api.DTOs;
 using MediWholesale.Domain.Constants;
 using MediWholesale.Domain.Enums;
 using MediWholesale.Infrastructure.Data;
+using MediWholesale.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -120,7 +121,7 @@ public class OrdersController : ControllerBase
         var order = await _db.SalesOrders.FindAsync(id);
         if (order is null) return NotFound();
 
-        if (order.Status is OrderStatus.Completed or OrderStatus.PartiallyDispatched)
+        if (order.Status is OrderStatus.Completed or OrderStatus.PartiallyDispatched or OrderStatus.Dispatched)
             return BadRequest(new { message = "Cannot cancel a dispatched or completed order." });
 
         order.Status = OrderStatus.Cancelled;
@@ -136,12 +137,130 @@ public class OrdersController : ControllerBase
         var order = await _db.SalesOrders
             .Include(o => o.Customer)
             .Include(o => o.Lines)
+                .ThenInclude(l => l.Product)
+            .Include(o => o.Invoice)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order is null) return NotFound();
+        if (status is OrderStatus.Confirmed or OrderStatus.Dispatched)
+            return await DispatchOrder(order);
+
         order.Status = status;
         order.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        return Map(order);
+    }
+
+    private async Task<ActionResult<OrderDto>> DispatchOrder(Domain.Entities.SalesOrder order)
+    {
+        if (order.Status is OrderStatus.Cancelled or OrderStatus.Completed)
+            return BadRequest(new { message = "Cannot dispatch a cancelled or completed order." });
+
+        if (order.Invoice is not null)
+        {
+            order.Status = OrderStatus.Dispatched;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Map(order);
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
+        var company = await _db.CompanyProfiles.AsNoTracking().FirstOrDefaultAsync();
+        var supplyType = company?.State.Equals(order.Customer.State, StringComparison.OrdinalIgnoreCase) == true
+            ? GstSupplyType.IntraState
+            : GstSupplyType.InterState;
+
+        var invoice = new Domain.Entities.Invoice
+        {
+            InvoiceNumber = await GenerateInvoiceNumber(),
+            CustomerId = order.CustomerId,
+            SalesOrderId = order.Id,
+            Status = InvoiceStatus.Issued,
+            SupplyType = supplyType,
+            AmountPaid = 0,
+            PlaceOfSupply = order.Customer.State
+        };
+
+        foreach (var line in order.Lines)
+        {
+            var remainingQuantity = line.Quantity - line.DispatchedQuantity;
+            if (remainingQuantity <= 0) continue;
+
+            var batches = await _db.BatchStocks
+                .Where(b =>
+                    b.ProductId == line.ProductId &&
+                    b.Quantity > 0 &&
+                    b.ExpiryDate.Date >= DateTime.UtcNow.Date)
+                .OrderBy(b => b.ExpiryDate)
+                .ToListAsync();
+
+            var availableQuantity = batches.Sum(b => b.Quantity);
+            if (availableQuantity < remainingQuantity)
+                return BadRequest(new { message = $"Insufficient stock for {line.ProductName}. Available: {availableQuantity}, required: {remainingQuantity}." });
+
+            var dispatchedBatches = new List<string>();
+            decimal dispatchedLineTotal = 0;
+            foreach (var batch in batches)
+            {
+                if (remainingQuantity == 0) break;
+
+                var dispatchedQuantity = Math.Min(batch.Quantity, remainingQuantity);
+                batch.Quantity -= dispatchedQuantity;
+                remainingQuantity -= dispatchedQuantity;
+                dispatchedBatches.Add(batch.BatchNumber);
+
+                const decimal discountAmount = 0;
+                var gst = GstCalculator.CalculateLine(
+                    line.UnitPrice,
+                    dispatchedQuantity,
+                    line.Product.GstRatePercent,
+                    supplyType,
+                    discountAmount);
+
+                invoice.Lines.Add(new Domain.Entities.InvoiceLine
+                {
+                    ProductId = line.ProductId,
+                    ProductName = line.ProductName,
+                    HsnCode = line.Product.HsnCode,
+                    BatchNumber = batch.BatchNumber,
+                    ExpiryDate = batch.ExpiryDate,
+                    Quantity = dispatchedQuantity,
+                    UnitPrice = line.UnitPrice,
+                    GstRatePercent = line.Product.GstRatePercent,
+                    TaxableAmount = gst.TaxableAmount,
+                    DiscountAmount = discountAmount,
+                    CgstAmount = gst.CgstAmount,
+                    SgstAmount = gst.SgstAmount,
+                    IgstAmount = gst.IgstAmount,
+                    LineTotal = gst.LineTotal
+                });
+                dispatchedLineTotal += gst.LineTotal;
+            }
+
+            line.DispatchedQuantity = line.Quantity;
+            line.BatchStockId = batches.FirstOrDefault()?.Id;
+            line.BatchNumber = string.Join(", ", dispatchedBatches.Distinct());
+            line.LineTotal = dispatchedLineTotal;
+        }
+
+        invoice.SubTotal = invoice.Lines.Sum(l => l.TaxableAmount);
+        invoice.DiscountAmount = invoice.Lines.Sum(l => l.DiscountAmount);
+        invoice.CgstAmount = invoice.Lines.Sum(l => l.CgstAmount);
+        invoice.SgstAmount = invoice.Lines.Sum(l => l.SgstAmount);
+        invoice.IgstAmount = invoice.Lines.Sum(l => l.IgstAmount);
+        invoice.TotalAmount = invoice.Lines.Sum(l => l.LineTotal);
+
+        order.Status = OrderStatus.Dispatched;
+        order.PaymentStatus = PaymentStatus.Pending;
+        order.TotalAmount = invoice.TotalAmount;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        _db.Invoices.Add(invoice);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        order.Invoice = invoice;
         return Map(order);
     }
 
@@ -155,6 +274,12 @@ public class OrdersController : ControllerBase
     {
         var count = await _db.SalesOrders.CountAsync() + 1;
         return $"SO-{DateTime.UtcNow:yyyyMM}-{count:D5}";
+    }
+
+    private async Task<string> GenerateInvoiceNumber()
+    {
+        var count = await _db.Invoices.CountAsync() + 1;
+        return $"INV-{DateTime.UtcNow:yyyyMM}-{count:D5}";
     }
 
     private static OrderDto Map(Domain.Entities.SalesOrder o) => new(

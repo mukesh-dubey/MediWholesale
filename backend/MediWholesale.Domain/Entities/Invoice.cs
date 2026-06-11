@@ -14,6 +14,7 @@ public class Invoice : BaseEntity
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
     public GstSupplyType SupplyType { get; set; }
     public decimal SubTotal { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal CgstAmount { get; set; }
     public decimal SgstAmount { get; set; }
     public decimal IgstAmount { get; set; }

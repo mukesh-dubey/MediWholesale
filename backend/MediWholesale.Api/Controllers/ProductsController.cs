@@ -39,8 +39,19 @@ public class ProductsController : ControllerBase
             .GroupBy(b => b.ProductId)
             .Select(g => new { ProductId = g.Key, Total = g.Sum(x => x.Quantity) })
             .ToDictionaryAsync(x => x.ProductId, x => x.Total);
+        var saleRates = await _db.BatchStocks
+            .AsNoTracking()
+            .Where(b => b.Quantity > 0 && b.ExpiryDate.Date >= DateTime.UtcNow.Date)
+            .OrderBy(b => b.ExpiryDate)
+            .Select(b => new { b.ProductId, b.SaleRate })
+            .ToListAsync();
+        var saleRateByProduct = saleRates
+            .GroupBy(b => b.ProductId)
+            .ToDictionary(g => g.Key, g => g.First().SaleRate);
 
-        return products.Select(p => Map(p, stock.GetValueOrDefault(p.Id))).ToList();
+        return products
+            .Select(p => Map(p, stock.GetValueOrDefault(p.Id), saleRateByProduct.GetValueOrDefault(p.Id)))
+            .ToList();
     }
 
     [HttpGet("{id:int}")]
@@ -50,7 +61,14 @@ public class ProductsController : ControllerBase
         if (product is null) return NotFound();
 
         var total = await _db.BatchStocks.Where(b => b.ProductId == id).SumAsync(b => b.Quantity);
-        return Map(product, total);
+        var saleRate = await _db.BatchStocks
+            .AsNoTracking()
+            .Where(b => b.ProductId == id && b.Quantity > 0 && b.ExpiryDate.Date >= DateTime.UtcNow.Date)
+            .OrderBy(b => b.ExpiryDate)
+            .Select(b => b.SaleRate)
+            .FirstOrDefaultAsync();
+
+        return Map(product, total, saleRate);
     }
 
     [HttpPost]
@@ -76,7 +94,7 @@ public class ProductsController : ControllerBase
         _db.Products.Add(entity);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, Map(entity, 0));
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, Map(entity, 0, 0));
     }
 
     [HttpPut("{id:int}")]
@@ -104,7 +122,14 @@ public class ProductsController : ControllerBase
 
         await _db.SaveChangesAsync();
         var total = await _db.BatchStocks.Where(b => b.ProductId == id).SumAsync(b => b.Quantity);
-        return Map(entity, total);
+        var saleRate = await _db.BatchStocks
+            .AsNoTracking()
+            .Where(b => b.ProductId == id && b.Quantity > 0 && b.ExpiryDate.Date >= DateTime.UtcNow.Date)
+            .OrderBy(b => b.ExpiryDate)
+            .Select(b => b.SaleRate)
+            .FirstOrDefaultAsync();
+
+        return Map(entity, total, saleRate);
     }
 
     [HttpDelete("{id:int}")]
@@ -120,8 +145,8 @@ public class ProductsController : ControllerBase
         return NoContent();
     }
 
-    private static ProductDto Map(Domain.Entities.Product p, int totalStock) => new(
+    private static ProductDto Map(Domain.Entities.Product p, int totalStock, decimal saleRate) => new(
         p.Id, p.Sku, p.Name, p.GenericName, p.Brand, p.Category, p.Unit,
         p.HsnCode, p.GstRatePercent, p.IsPrescriptionRequired, p.ReorderLevel,
-        p.IsActive, totalStock);
+        p.IsActive, totalStock, saleRate);
 }

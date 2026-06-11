@@ -33,6 +33,7 @@ export interface Product {
   reorderLevel: number;
   isActive: boolean;
   totalStock: number;
+  saleRate: number;
 }
 
 export interface BatchStock {
@@ -74,6 +75,53 @@ export interface Order {
   notes?: string;
   placedByCustomer: boolean;
   lines: OrderLine[];
+}
+
+export interface InvoiceLine {
+  id: number;
+  productId: number;
+  productName: string;
+  hsnCode: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  quantity: number;
+  unitPrice: number;
+  gstRatePercent: number;
+  taxableAmount: number;
+  discountAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  lineTotal: number;
+}
+
+export interface Invoice {
+  id: number;
+  invoiceNumber: string;
+  salesOrderId?: number;
+  orderNumber?: string;
+  customerId: number;
+  customerName: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  phone: string;
+  email?: string;
+  gstin?: string;
+  invoiceDate: string;
+  status: string;
+  paymentStatus: string;
+  supplyType: string;
+  subTotal: number;
+  discountAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  totalAmount: number;
+  amountPaid: number;
+  placeOfSupply?: string;
+  lines: InvoiceLine[];
 }
 
 export interface Dashboard {
